@@ -1,0 +1,93 @@
+# The main job for {{.project_name}}
+
+resources:
+  jobs:
+    {{.project_name}}_job:
+      name: {{.project_name}}_${bundle.target}
+
+      schedule:
+        # Run every day at 6:30 AM
+        quartz_cron_expression: '0 30 6 * * ?'
+        timezone_id: UTC
+        pause_status: PAUSED
+
+      email_notifications:
+        on_failure:
+          - email@zillowgroup.com       # Add email for on_failure notifications
+
+      tasks:
+        - task_key: sample_notebook_task
+          notebook_task:
+            source: GIT
+            notebook_path: {{.project_name}}_workflows/notebooks/sample_task
+         {{if eq .cluster "'Existing'"}} existing_cluster_id:  {{.cluster_id}} {{else}} job_cluster_key: {{.project_name}}_job_cluster {{end}}
+
+        - task_key: my_first_dbt_model
+          depends_on:
+            - task_key: sample_notebook_task
+          run_if: NONE_FAILED
+          dbt_task:
+            project_directory: {{.project_name}}_workflows/dbt
+            source: GIT
+            commands:
+              - dbt deps
+              - dbt run --select=my_first_dbt_model 
+              - dbt test --select=my_first_dbt_model.sql
+            catalog: ${var.catalog}
+            schema: ${var.schema}
+            warehouse_id: ${var.warehouse_id}
+         {{if eq .cluster "'Existing'"}} existing_cluster_id:  {{.cluster_id}} {{else}} job_cluster_key: {{.project_name}}_job_cluster {{end}}
+
+        - task_key: my_second_dbt_model
+          depends_on:
+            - task_key: my_first_dbt_model
+          run_if: NONE_FAILED
+          dbt_task:
+            project_directory: {{.project_name}}_workflows/dbt
+            source: GIT
+            commands:
+              - dbt deps
+              - dbt run --select=my_second_dbt_model 
+              - dbt test --select=my_second_dbt_model
+            catalog: ${var.catalog}
+            schema: ${var.schema}
+            warehouse_id: ${var.warehouse_id}
+         {{if eq .cluster "'Existing'"}} existing_cluster_id:  {{.cluster_id}} {{else}} job_cluster_key: {{.project_name}}_job_cluster {{end}}
+
+      {{if eq .cluster "'New'"}} 
+      job_clusters:
+        - job_cluster_key: {{.project_name}}_job_cluster
+          new_cluster:
+            spark_version: 13.3.x-scala2.12
+            spark_conf:
+              spark.master: local[*, 4]
+              spark.databricks.cluster.profile: singleNode
+            aws_attributes:
+              first_on_demand: 1
+              availability: SPOT_WITH_FALLBACK
+              zone_id: us-west-2c
+              spot_bid_price_percent: 100
+              ebs_volume_count: 0
+            node_type_id: i3.xlarge
+            driver_node_type_id: i3.xlarge
+            custom_tags:
+              ResourceClass: SingleNode
+              Service: {{.zodiac_service}}
+              Team: {{.zodiac_team}}
+            spark_env_vars:
+              PYSPARK_PYTHON: /databricks/python3/bin/python3
+            enable_elastic_disk: true
+            data_security_mode: SINGLE_USER
+            runtime_engine: STANDARD
+            num_workers: 0
+            policy_id: {{.policy_id}}
+            apply_policy_default_values: true
+          permissions:
+            - service_principal_name: {{.service_principle_name}}
+              level: CAN_MANAGE
+    {{end}}
+
+      git_source:
+        git_url: https://gitlab.zgtools.net/analytics/data-engineering/big-data/mopsde/mops_data_enrichment_databricks  # Replace with your repository url 
+        git_provider: gitLab
+        git_branch: ${var.git_branch}

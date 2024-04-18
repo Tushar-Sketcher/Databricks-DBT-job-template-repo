@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "pattern": "^[^ .\\\\/-]{3,}$",
+      "pattern_match_failure_message": "Project name must be at least 3 characters long and cannot contain the following characters: \"\\\", \"/\", \" \" , \".\".,-",
+      "default": "",
+      "description": "Enter Project name for DBT pipeline",
+      "order": 1
+    },
+
+    "catalog": {
+      "type": "string",
+      "default": "",
+      "pattern": "^[a-zA-Z_-]{1,}$",
+      "pattern_match_failure_message": "catalog must not be empty, cannot start with - _ and cannot contain anything except alphabets and -_",
+      "description": "Enter catalog",
+      "order": 2
+    },
+
+    "schema": {
+      "type": "string",
+      "default": "",
+      "pattern": "^.{2,}$",
+      "pattern_match_failure_message": "schema require atlease one characters",
+      "description": "Enter schema",
+      "order": 3
+    },
+
+    "svc_client_id_nonprod": {
+      "type": "string",
+      "pattern": "^.+$",
+      "pattern_match_failure_message": "service principal id is mandatory",
+      "description": "Add service principal for non-prod env",
+      "default": "",
+      "order": 4
+    },
+
+    "svc_client_id_prod": {
+      "type": "string",
+      "pattern": "^.+$",
+      "pattern_match_failure_message": "service principal id is mandatory",
+      "description": "Add service principal for prod env",
+      "default": "",
+      "order": 5
+    },
+
+    "cluster": {
+      "type": "string",
+      "description": "Do you want to use an existing cluster or create a new one?",
+      "enum": [
+        "'Existing'",
+        "'New'"
+      ],
+      "default": "'Existing'",
+      "order": 6
+    },
+
+    "cluster_id": {
+      "type": "string",
+      "description": "Enter the existing cluster_id. Required if cluster value is existing.",
+      "pattern": "^.{10,}$",
+      "pattern_match_failure_message": "Existing cluster_id is mandatory.",
+      "default":"{{if (eq .cluster `'New'`)}} existing_cluster_id{{else}}{{end}}",
+      "skip_prompt_if":{
+         "properties":{
+           "cluster":{
+             "const":"'New'"
+           }
+         }
+       }
+    },
+
+    "zodiac_team": {
+      "type": "string",
+      "examples": ["mopsde","big-data-pade"],
+      "description": "Enter the zodiac team",
+      "default":"{{if (eq .cluster `'Existing'`)}}mopsde{{else}}{{end}}",
+      "pattern": "^[^0-9]+.*$",
+      "pattern_match_failure_message": "Zodiac team should not start with a numerical value.",
+      "skip_prompt_if":{
+         "properties":{
+           "cluster":{
+             "const":"'Existing'"
+           }
+         }
+       }
+    },
+
+    "zodiac_service": {
+      "type": "string",
+      "description": "Enter the zodiac service.",
+      "default":"{{if (eq .cluster `'Existing'`)}}mops-databricks{{else}}{{end}}",
+      "examples": ["mops-databricks","pade-databricks"],
+      "pattern": "^.{10,}$",
+      "pattern_match_failure_message": "zodiac service is mandatory if you choose new cluster",
+      "skip_prompt_if":{
+         "properties":{
+           "cluster":{
+             "const":"'Existing'"
+           }
+         }
+       }
+    },
+
+    "service_principle_name": {
+      "type": "string",
+      "description": "Enter the service principle name",
+      "examples": ["svc_<zodiac_service>_nonprod"],
+      "default":"{{if (eq .cluster `'Existing'`)}}svc_mops-databricks_nonprod{{else}}{{end}}",
+      "pattern": "^.{10,}$",
+      "pattern_match_failure_message": "service principal name is mandatory if you choose new cluster\n If you don't have service principal please contact DIM team",
+      "skip_prompt_if":{
+         "properties":{
+           "cluster":{
+             "const":"'Existing'"
+           }
+         }
+       }
+    },
+
+    "policy_id": {
+      "type": "string",
+      "description": "Enter the cluster policy id.",
+      "default":"{{if (eq .cluster `'Existing'`)}}policy_id{{else}}{{end}}",
+      "pattern": "^.+$",
+      "pattern_match_failure_message": "cluster policy id is mandatory if you choose new cluster",
+      "skip_prompt_if":{
+         "properties":{
+           "cluster":{
+             "const":"'Existing'"
+           }
+         }
+       }
+    }
+  }
+}

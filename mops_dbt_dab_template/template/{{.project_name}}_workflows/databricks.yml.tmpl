@@ -1,0 +1,76 @@
+# This is a Databricks asset bundle definition for {{.project_name}}.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: {{.project_name}}_workflows
+
+include:
+  - resources/*.yml
+
+variables:
+  git_branch:
+    description: The git branch being used for deployment
+    default: ${bundle.git.branch} # Must set this separately as this info is unavailable during CI/CD deployment.
+  warehouse_id:
+    description: The Warehouse ID of the SQL Warehouse accessed by dbt_job
+  catalog:
+    description: The Catalog of the SQL Warehouse that dbt_job is writing to
+    default: dev_mopsde
+  # dbt_policy_id:
+  #   description: The cluster policy id for DBT jobs
+  # dlt_policy_id:
+  #   description: The cluster policy id for DLT pipelines
+  schema:
+    description: The Schema of the SQL Warehouse that ccd workflow jobs are writing to
+    default: mart_mops_test
+
+targets:
+  # The lab env can be used for the local deployment of the databricks workflows
+  lab:
+    # We use 'mode: development' to indicate this is a personal development copy:
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default
+    default: true
+    mode: development
+    workspace:
+      host: https://zg-core-tech-lab.cloud.databricks.com
+    variables:
+      warehouse_id: 97d5a03b269d8136  # The Warehouse ID of the SQL Warehouse accessed by dbt_job
+      catalog: {{.catalog}}
+      schema: {{.schema}}
+      #dbt_policy_id: 00186E3EFF17B2A5   #The cluster policy id for DBT jobs
+
+  stage:
+    mode: production
+    workspace:
+      host: https://zg-core-tech-stage.cloud.databricks.com
+      root_path: /Shared/.bundle/${bundle.target}/{{.project_name}}
+    run_as:
+      service_principal_name: {{.svc_client_id_nonprod}}  # svc_databricks-client-id-nonprod
+    variables:
+      warehouse_id: 1bbd939dda5a1d46 # Update with Stage warehouse_id
+      catalog: {{.catalog}}
+      schema: {{.schema}}
+      #dbt_policy_id: 00186E3EFF17B2A5 # DBT SQL Warehouse Tasks
+    permissions:
+      - group_name: developers
+        level: CAN_VIEW
+
+  # prod:
+  # # We use 'mode: production' to indicate this is a production deployment.
+  #   mode: production
+  #   workspace:
+  #     host: https://zg-core-tech-prod.cloud.databricks.com
+  #     root_path: /Shared/.bundle/${bundle.target}/{{.project_name}}
+  #   run_as:
+  #     service_principal_name: {{.svc_client_id_prod}}  # svc_databricks-client-id-prod
+  #   variables:
+  #     warehouse_id: 8cffe4c698a48969 # Update with Prod warehouse_id
+  #     catalog: {{.catalog}}
+  #     schema: {{.schema}}
+  #     dbt_policy_id: 000E7E46C0CA2FD8 # DBT Task
+  #     dlt_policy_id: 00167F248129363F # DLT General
+  #   permissions:
+  #     - group_name: developers
+  #       level: CAN_VIEW
+  #     - group_name: zodiac_dax
+  #       level: CAN_MANAGE
